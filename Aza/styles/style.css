@@ -1,0 +1,171 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f6f6f6;
+    color: #222;
+}
+
+/* HEADER */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 60px;
+    background: #111;
+    color: white;
+}
+
+.logo {
+    font-size: 26px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+nav a {
+    color: #ddd;
+    margin-left: 30px;
+    text-decoration: none;
+    font-size: 18px;
+}
+
+nav a.active,
+nav a:hover {
+    color: #fff;
+    border-bottom: 2px solid #fff;
+}
+
+/* HERO */
+.hero {
+    padding: 100px 60px;
+    text-align: center;
+    background: url('img/hotel-bg.jpg') center/cover no-repeat;
+    color: white;
+}
+
+.hero h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+/* FEATURES */
+.features {
+    padding: 70px 60px;
+    text-align: center;
+}
+
+.features .cards {
+    display: flex;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.card {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    width: 33%;
+}
+
+/* ABOUT */
+.page-header {
+    padding: 60px;
+    text-align: center;
+}
+
+.about-text {
+    padding: 40px 60px;
+    font-size: 18px;
+    line-height: 1.7;
+}
+
+.gallery img {
+    width: 200px;
+    border-radius: 10px;
+}
+
+.about-gallery {
+    padding: 40px 60px;
+}
+
+.gallery {
+    display: flex;
+    gap: 20px;
+}
+
+/* CONTACTS GRID */
+.contacts-grid {
+    padding: 40px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.map {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+/* FORM */
+.form-section {
+    padding-left: 600px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 600px;
+}
+
+input, textarea {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #aaa;
+}
+
+button {
+    padding: 12px;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #333;
+}
+
+/* FOOTER */
+footer {
+    text-align: center;
+    padding: 20px;
+    background: #111;
+    color: white;
+    margin-top: 40px;
+}
+
+/* ADAPTIVE */
+@media (max-width: 768px) {
+    .features .cards {
+        flex-direction: column;
+    }
+
+    .contacts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    header {
+        padding: 15px 20px;
+    }
+}
