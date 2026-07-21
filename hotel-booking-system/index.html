@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grand Hotel - Бөлме брондау жүйесі</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Төлем үшін Stripe (қосымша) -->
+    <script src="https://js.stripe.com/v3/"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            overflow-x: hidden;
+            color: #333;
+        }
+
+        /* Навигация */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            z-index: 1000;
+            animation: slideDown 0.5s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            color: #c4a484;
+        }
+
+        .nav-brand i {
+            font-size: 32px;
+            color: #c4a484;
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-menu a {
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-menu a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #c4a484;
+            transition: all 0.3s;
+        }
+
+        .nav-menu a:hover::after,
+        .nav-menu a.active::after {
+            width: 100%;
+        }
+
+        .nav-menu a:hover,
+        .nav-menu a.active {
+            color: #c4a484;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-icon {
+            width: 45px;
+            height: 45px;
+            border: none;
+            border-radius: 50%;
+            background: #f5f5f5;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-icon:hover {
+            background: #c4a484;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #c4a484 0%, #b38b6b 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(196, 164, 132, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
+        }
+
+        /* Hero секция */
+        .hero {
+            height: 100vh;
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
+                        url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-top: 80px;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 100%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            color: white;
+            max-width: 600px;
+            margin-left: 10%;
+            animation: fadeInUp 1s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-content h1 {
+            font-size: 60px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero-content p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .hero-features {
+            display: flex;
+            gap: 30px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .hero-features span {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+        }
+
+        .hero-features i {
+            color: #c4a484;
+            font-size: 20px;
+        }
+
+        /* Брондау формасы */
+        .booking-section {
+            margin-top: -100px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .booking-form-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            animation: fadeInUp 1s ease 0.3s both;
+        }
+
+        .booking-form-container h2 {
+            font-size: 28px;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .booking-form-container h2 i {
+            color: #c4a484;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #7f8c8d;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group label i {
+            margin-right: 5px;
+            color: #c4a484;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #c4a484;
+            box-shadow: 0 0 0 3px rgba(196, 164, 132, 0.1);
+        }
+
+        .btn-block {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        /* Бөлмелер секциясы */
+        .rooms-section {
+            padding: 100px 0;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 30px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-header h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 3px;
+            background: #c4a484;
+        }
+
+        .section-header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        /* Фильтрлер */
+        .room-filters {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            background: white;
+            color: #2c3e50;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .filter-btn.active {
+            background: #c4a484;
+            color: white;
+            box-shadow: 0 5px 20px rgba(196, 164, 132, 0.3);
+        }
+
+        .filter-btn:hover {
+            background: #c4a484;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Бөлмелер гриды */
+        .rooms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .room-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .room-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .room-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #c4a484;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .room-image {
+            height: 250px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .room-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.5s;
+        }
+
+        .room-card:hover .room-image img {
+            transform: scale(1.1);
+        }
+
+        .room-info {
+            padding: 25px;
+        }
+
+        .room-info h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .room-description {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .room-details {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .room-details span {
+            font-size: 13px;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .room-details i {
+            color: #c4a484;
+        }
+
+        .room-amenities {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .amenity-tag {
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #2c3e50;
+        }
+
+        .room-price {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ecf0f1;
+        }
+
+        .price {
+            font-size: 28px;
+            font-weight: 700;
+            color: #c4a484;
+        }
+
+        .price span {
+            font-size: 14px;
+            font-weight: 400;
+            color: #7f8c8d;
+        }
+
+        .btn-book {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-book:hover {
+            background: #c4a484;
+            transform: translateY(-2px);
+        }
+
+        /* Төлем әдістері */
+        .payment-section {
+            padding: 80px 0;
+            background: white;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .payment-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .payment-card:hover {
+            transform: translateY(-5px);
+            border-color: #c4a484;
+            box-shadow: 0 10px 30px rgba(196, 164, 132, 0.2);
+        }
+
+        .payment-card.selected {
+            border-color: #c4a484;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+        }
+
+        .payment-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        .payment-icon.kaspi {
+            color: #f14635;
+        }
+
+        .payment-icon.visa {
+            color: #1a1f71;
+        }
+
+        .payment-icon.mastercard {
+            color: #eb001b;
+        }
+
+        .payment-icon.paypal {
+            color: #003087;
+        }
+
+        .payment-card h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .payment-card p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .payment-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #c4a484;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+
+        /* Модальды терезе */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            max-width: 500px;
+            width: 90%;
+            animation: modalSlideIn 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-header i {
+            font-size: 60px;
+            color: #c4a484;
+            margin-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            color: #2c3e50;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: all 0.3s;
+        }
+
+        .close-modal:hover {
+            color: #e74c3c;
+        }
+
+        /* Төлем формасы */
+        .payment-form {
+            margin-top: 20px;
+        }
+
+        .card-input {
+            margin-bottom: 20px;
+        }
+
+        .card-input label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .card-element {
+            padding: 15px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            background: white;
+        }
+
+        .total-amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: #c4a484;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        /* Хабарландыру */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 3000;
+            animation: slideRight 0.3s ease;
+        }
+
+        .notification.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #2ecc71;
+        }
+
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .notification.info {
+            background: #cce5ff;
+            color: #004085;
+            border-left: 4px solid #3498db;
+        }
+
+        @keyframes slideRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 60px 0 30px;
+            margin-top: 50px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-col h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .footer-col h3::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: #c4a484;
+        }
+
+        .footer-col ul {
+            list-style: none;
+        }
+
+        .footer-col ul li {
+            margin-bottom: 10px;
+        }
+
+        .footer-col ul li a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .footer-col ul li a:hover {
+            color: #c4a484;
+            padding-left: 5px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .social-links a {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .social-links a:hover {
+            background: #c4a484;
+            transform: translateY(-3px);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #bdc3c7;
+        }
+
+        /* Жүктеу анимациясы */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: all 0.5s;
+        }
+
+        .loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #c4a484;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Адаптивтілік */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav-menu {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .hero-content h1 {
+                font-size: 36px;
+            }
+            
+            .hero-content {
+                margin-left: 5%;
+                margin-right: 5%;
+            }
+            
+            .booking-section {
+                margin-top: -50px;
+            }
+            
+            .rooms-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Жүктеу экраны -->
+    <div class="loader" id="loader">
+        <div class="loader-spinner"></div>
+    </div>
+
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-hotel"></i>
+                <span>Grand Hotel</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="active">Басты</a></li>
+                <li><a href="#rooms">Бөлмелер</a></li>
+                <li><a href="#payment">Төлем</a></li>
+                <li><a href="#contact">Байланыс</a></li>
+            </ul>
+            <div class="nav-buttons">
+                <button class="btn-icon" id="userBtn"><i class="fas fa-user"></i></button>
+                <button class="btn-primary" id="bookNowBtn">Брондау</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero секция -->
+    <section id="home" class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1>Grand Hotel & Spa</h1>
+            <p>Үздік қызмет, жайлы бөлмелер және қолжетімді бағалар. Алматының жүрегінде орналасқан қонақүй сізді күтеді.</p>
+            <div class="hero-features">
+                <span><i class="fas fa-wifi"></i> Тегін Wi-Fi</span>
+                <span><i class="fas fa-utensils"></i> Таңғы ас</span>
+                <span><i class="fas fa-swimmer"></i> Бассейн</span>
+                <span><i class="fas fa-dumbbell"></i> Спорт залы</span>
+                <span><i class="fas fa-shield-alt"></i> Қауіпсіз төлем</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Брондау формасы -->
+    <section class="booking-section">
+        <div class="container">
+            <div class="booking-form-container">
+                <h2><i class="fas fa-calendar-check"></i> Бөлме брондау</h2>
+                <form id="bookingForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar"></i> Келу күні</label>
+                            <input type="date" id="checkIn" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar"></i> Кету күні</label>
+                            <input type="date" id="checkOut" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> Ересектер</label>
+                            <select id="adults">
+                                <option value="1">1 ересек</option>
+                                <option value="2" selected>2 ересек</option>
+                                <option value="3">3 ересек</option>
+                                <option value="4">4 ересек</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-child"></i> Балалар</label>
+                            <select id="children">
+                                <option value="0">0 бала</option>
+                                <option value="1">1 бала</option>
+                                <option value="2">2 бала</option>
+                                <option value="3">3 бала</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-bed"></i> Бөлме түрі</label>
+                            <select id="roomType">
+                                <option value="all">Барлығы</option>
+                                <option value="Стандарт">Стандарт</option>
+                                <option value="Люкс">Люкс</option>
+                                <option value="Отбасылық">Отбасылық</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">
+                        <i class="fas fa-search"></i> Қолжетімді бөлмелерді іздеу
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Бөлмелер секциясы -->
+    <section id="rooms" class="rooms-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Біздің бөлмелер</h2>
+                <p>Сіздің талғамыңызға сай әртүрлі бөлме түрлері</p>
+            </div>
+
+            <div class="room-filters">
+                <button class="filter-btn active" data-filter="all">Барлығы</button>
+                <button class="filter-btn" data-filter="Стандарт">Стандарт</button>
+                <button class="filter-btn" data-filter="Люкс">Люкс</button>
+                <button class="filter-btn" data-filter="Отбасылық">Отбасылық</button>
+            </div>
+
+            <div class="rooms-grid" id="roomsGrid">
+                <!-- Бөлмелер JS арқылы толтырылады -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Төлем әдістері секциясы -->
+    <section id="payment" class="payment-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Төлем әдістері</h2>
+                <p>Сізге ыңғайлы төлем тәсілін таңдаңыз</p>
+            </div>
+
+            <div class="payment-methods">
+                <div class="payment-card" onclick="selectPayment('kaspi')">
+                    <div class="payment-icon kaspi">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h3>Kaspi Gold</h3>
+                    <p>Тез әрі ыңғайлы төлем</p>
+                    <span class="payment-badge">Комиссия 0%</span>
+                </div>
+                
+                <div class="payment-card" onclick="selectPayment('visa')">
+                    <div class="payment-icon visa">
+                        <i class="fab fa-cc-visa"></i>
+                    </div>
+                    <h3>Visa</h3>
+                    <p>Халықаралық төлем картасы</p>
+                    <span class="payment-badge">Комиссия 1.5%</span>
+                </div>
+                
+                <div class="payment-card" onclick="selectPayment('mastercard')">
+                    <div class="payment-icon mastercard">
+                        <i class="fab fa-cc-mastercard"></i>
+                    </div>
+                    <h3>Mastercard</h3>
+                    <p>Әлемдік төлем жүйесі</p>
+                    <span class="payment-badge">Комиссия 1.5%</span>
+                </div>
+                
+                <div class="payment-card" onclick="selectPayment('paypal')">
+                    <div class="payment-icon paypal">
+                        <i class="fab fa-cc-paypal"></i>
+                    </div>
+                    <h3>PayPal</h3>
+                    <p>Онлайн төлем жүйесі</p>
+                    <span class="payment-badge">Комиссия 2%</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Байланыс секциясы -->
+    <section id="contact" class="rooms-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Байланыс</h2>
+                <p>Бізбен байланысыңыз</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+                <div style="background: white; padding: 30px; border-radius: 15px; text-align: center;">
+                    <i class="fas fa-map-marker-alt" style="font-size: 40px; color: #c4a484; margin-bottom: 15px;"></i>
+                    <h3>Мекенжай</h3>
+                    <p>Алматы қ., Достық даңғылы 123</p>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 15px; text-align: center;">
+                    <i class="fas fa-phone" style="font-size: 40px; color: #c4a484; margin-bottom: 15px;"></i>
+                    <h3>Телефон</h3>
+                    <p>+7 (727) 123-45-67</p>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 15px; text-align: center;">
+                    <i class="fas fa-envelope" style="font-size: 40px; color: #c4a484; margin-bottom: 15px;"></i>
+                    <h3>Email</h3>
+                    <p>info@grandhotel.kz</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <h3>Grand Hotel</h3>
+                    <ul>
+                        <li><a href="#home">Басты бет</a></li>
+                        <li><a href="#rooms">Бөлмелер</a></li>
+                        <li><a href="#payment">Төлем</a></li>
+                        <li><a href="#contact">Байланыс</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Төлем әдістері</h3>
+                    <ul>
+                        <li>Kaspi Gold</li>
+                        <li>Visa</li>
+                        <li>Mastercard</li>
+                        <li>PayPal</li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Байланыс</h3>
+                    <ul>
+                        <li><i class="fas fa-phone"></i> +7 (727) 123-45-67</li>
+                        <li><i class="fas fa-envelope"></i> info@grandhotel.kz</li>
+                        <li><i class="fas fa-map-marker-alt"></i> Алматы қ., Достық 123</li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Бізге жазылыңыз</h3>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Grand Hotel. Барлық құқықтар қорғалған.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Кіру модальды терезесі -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeLoginModal()">&times;</span>
+            <div class="modal-header">
+                <i class="fas fa-user-circle"></i>
+                <h2>Жүйеге кіру</h2>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Құпия сөз</label>
+                    <input type="password" id="loginPassword" placeholder="********" required>
+                </div>
+                <button type="submit" class="btn-primary btn-block">Кіру</button>
+                <p style="text-align: center; margin-top: 15px;">
+                    Аккаунтыңыз жоқ па? <a href="#" onclick="showRegisterModal()">Тіркелу</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Тіркелу модальды терезесі -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeRegisterModal()">&times;</span>
+            <div class="modal-header">
+                <i class="fas fa-user-plus"></i>
+                <h2>Тіркелу</h2>
+            </div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Аты-жөні</label>
+                    <input type="text" id="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Телефон</label>
+                    <input type="text" id="registerPhone" required>
+                </div>
+                <div class="form-group">
+                    <label>Құпия сөз</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                <button type="submit" class="btn-primary btn-block">Тіркелу</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Брондау модальды терезесі -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-modal" onclick="closeBookingModal()">&times;</span>
+            <div class="modal-header">
+                <i class="fas fa-calendar-check"></i>
+                <h2>Бөлме брондау</h2>
+            </div>
+            <form id="bookingModalForm">
+                <input type="hidden" id="bookingRoomId">
+                <input type="hidden" id="bookingPaymentMethod">
+                
+                <div class="form-group">
+                    <label>Бөлме</label>
+                    <input type="text" id="bookingRoomName" readonly>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Келу күні</label>
+                        <input type="date" id="bookingCheckIn" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Кету күні</label>
+                        <input type="date" id="bookingCheckOut" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Аты-жөні</label>
+                        <input type="text" id="bookingName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон</label>
+                        <input type="text" id="bookingPhone" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="bookingEmail" required>
+                </div>
+
+                <!-- Төлем әдісін таңдау -->
+                <div class="form-group">
+                    <label>Төлем әдісі</label>
+                    <select id="bookingPaymentSelect" onchange="updatePaymentMethod()" required>
+                        <option value="">Төлем әдісін таңдаңыз</option>
+                        <option value="kaspi">Kaspi Gold (0% комиссия)</option>
+                        <option value="visa">Visa (1.5% комиссия)</option>
+                        <option value="mastercard">Mastercard (1.5% комиссия)</option>
+                        <option value="paypal">PayPal (2% комиссия)</option>
+                    </select>
+                </div>
+
+                <!-- Төлем картасының деректері (Visa/Mastercard үшін) -->
+                <div id="cardDetails" style="display: none;">
+                    <div class="form-group">
+                        <label>Карта нөмірі</label>
+                        <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Мерзімі</label>
+                            <input type="text" id="cardExpiry" placeholder="MM/YY">
+                        </div>
+                        <div class="form-group">
+                            <label>CVV</label>
+                            <input type="text" id="cardCvv" placeholder="123">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kaspi төлемі үшін -->
+                <div id="kaspiDetails" style="display: none;">
+                    <div class="form-group">
+                        <label>Kaspi телефон нөмірі</label>
+                        <input type="text" id="kaspiPhone" placeholder="+7 777 123 45 67">
+                    </div>
+                </div>
+
+                <!-- PayPal үшін -->
+                <div id="paypalDetails" style="display: none;">
+                    <div class="form-group">
+                        <label>PayPal Email</label>
+                        <input type="email" id="paypalEmail" placeholder="email@example.com">
+                    </div>
+                </div>
+
+                <!-- Жалпы сома -->
+                <div id="bookingTotal" class="total-amount">
+                    Жалпы сома: 0 ₸
+                </div>
+
+                <button type="submit" class="btn-success btn-block" id="payButton">
+                    <i class="fas fa-lock"></i> Төлемді растау
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Төлем сәтті модальды терезесі -->
+    <div id="successModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-modal" onclick="closeSuccessModal()">&times;</span>
+            <div style="padding: 20px;">
+                <i class="fas fa-check-circle" style="font-size: 80px; color: #2ecc71; margin-bottom: 20px;"></i>
+                <h2 style="color: #2c3e50; margin-bottom: 15px;">Төлем сәтті өтті!</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Сіздің брондауыңыз қабылданды. Растау хаты email-ге жіберілді.</p>
+                <button class="btn-primary" onclick="closeSuccessModal()">Жабу</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Хабарландыру контейнері -->
+    <div id="notificationContainer"></div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
